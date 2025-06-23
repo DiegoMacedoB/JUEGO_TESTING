@@ -7,15 +7,14 @@ class Player:
         self.intelligence = 3
         self.armor = 0
         self.damage = 0
-        self.gold = 50  # Empezar con algo de oro
+        self.gold = 0
         self.exp = 0
         self.level = 1
         self.equipment = {
             "head": None,
             "body": None,
             "weapon": None,
-            "companion": None,
-            "accessory": None
+            "companion": None
         }
         self.inventory = []
     
@@ -34,8 +33,32 @@ class Player:
         
         return base_stat
     
-    def add_item(self, item):
-        self.inventory.append(item)
+    def add_exp(self, amount):
+        self.exp += amount
+        required_exp = 5 + (self.level - 1) * 5
+        if self.exp >= required_exp:
+            self.level_up()
+    
+    def level_up(self):
+        self.level += 1
+        self.exp = 0
+        # En un juego real, aquí se mostraría una interfaz para elegir qué stat mejorar
+        self.strength += 1
+        self.agility += 1
+        self.intelligence += 1
+    
+    def take_damage(self, amount, is_mental=False):
+        if is_mental:
+            self.sanity = max(0, self.sanity - amount)
+            return self.sanity <= 0
+        else:
+            self.health = max(0, self.health - amount)
+            return self.health <= 0
+    
+    def restore(self, health=0, sanity=0):
+        self.health = min(5, self.health + health)
+        self.sanity = min(5, self.sanity + sanity)
+    
     
     def equip_item(self, item):
         if item.type in self.equipment:
