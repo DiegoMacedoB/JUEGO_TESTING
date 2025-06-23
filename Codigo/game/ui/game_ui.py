@@ -1,3 +1,6 @@
+from pygame import Rect, draw, font
+from game.content.items import ItemManager
+
 import pygame
 import os
 
@@ -7,56 +10,52 @@ class GameUI:
         self.player = player
         self.font = pygame.font.SysFont('Arial', 28)
         self.small_font = pygame.font.SysFont('Arial', 22)
+        self.item_manager = ItemManager()  
         
-        # Colores
         self.button_color = (70, 130, 180)
         self.button_hover = (100, 149, 237)
-        self.text_box_color = (0, 0, 0, 180)  # Fondo semitransparente para texto
-        self.text_color = (255, 255, 255)      # Color del texto
-    
+        self.text_box_color = (0, 0, 0, 180)  
+        self.text_color = (255, 255, 255)
+        self.notification = ""     
+        self.notification_timer = 0  
+
+
     def load_image(self, filename):
         """Carga una imagen desde la carpeta assets"""
         try:
-            # Construir la ruta correcta: assets/nombre_archivo.png
             full_path = os.path.join("assets", filename)
             return pygame.image.load(full_path)
         except Exception as e:
             print(f"Error cargando imagen {filename}: {e}")
-            # Crear una imagen de reemplazo
             surf = pygame.Surface((500, 350))
             surf.fill((50, 50, 50))
             return surf
     
     def draw(self, scene):
         """Dibuja la interfaz de la escena actual"""
-        # Limpiar pantalla
         self.screen.fill((30, 30, 30))
         
-        # Dibujar imagen de la escena
         scene_image = self.load_image(scene.image)
         if scene_image:
-            # Escalar la imagen manteniendo proporción
             scene_image = pygame.transform.scale(scene_image, (700, 400))
             self.screen.blit(scene_image, (250, 20))
         
-        # Dibujar información del jugador
         self.draw_player_info()
         
-        # Calcular posición del cuadro de texto
         text_box_y = 440
         
-        # Dibujar cuadro de texto con descripción
         self.draw_text_box(scene.description, (100, text_box_y), 1000)
         
-        # Calcular posición de los botones
         text_height = self.calculate_text_height(scene.description, 1000)
         button_start_y = text_box_y + text_height + 30
         
-        # Dibujar botones según el tipo de escena
         if scene.enemy_id:
             self.draw_combat_button(button_start_y)
+        elif scene.shop:
+            self.draw_shop()
         else:
             self.draw_choices(scene.choices, button_start_y)
+
         
         pygame.display.flip()
     
@@ -264,3 +263,45 @@ class GameUI:
         pygame.draw.rect(self.screen, (255, 255, 255), accept_rect, 2, border_radius=10)
         accept_text = self.font.render("Aceptar", True, (255, 255, 255))
         self.screen.blit(accept_text, (accept_rect.x + 60, accept_rect.y + 15))
+
+    def draw_shop(self):
+        self.screen.fill((200, 200, 250))
+        self.button_rects = []
+        y = 100
+        for item in self.item_manager.get_shop_items():
+            text = f"{item.name} - {item.price} oro"
+            txt_surf = self.font.render(text, True, (0, 0, 0))
+            self.screen.blit(txt_surf, (100, y))
+            btn_rect = Rect(400, y, 120, 30)
+            draw.rect(self.screen, (0, 200, 0), btn_rect)
+            buy_txt = self.font.render("Comprar", True, (255, 255, 255))
+            self.screen.blit(buy_txt, (btn_rect.x + 10, btn_rect.y + 5))
+            self.button_rects.append((btn_rect, item))
+            y += 50
+        if self.notification_timer > 0:
+            notif_surf = self.font.render(self.notification, True, (0, 0, 0))
+            notif_rect = notif_surf.get_rect(center=(600, 700))
+            pygame.draw.rect(self.screen, (255, 255, 200), notif_rect.inflate(20, 10))
+            self.screen.blit(notif_surf, notif_rect)
+            self.notification_timer -= 1
+
+
+        # Botón salir
+        salir_rect = Rect(100, y + 20, 120, 30)
+        draw.rect(self.screen, (150, 0, 0), salir_rect)
+        salir_txt = self.font.render("Salir", True, (255, 255, 255))
+        self.screen.blit(salir_txt, (salir_rect.x + 30, salir_rect.y + 5))
+        self.button_rects.append((salir_rect, "salir"))
+
+    def handle_shop_click(self, pos):
+        for rect, item in self.button_rects:
+            if rect.collidepoint(pos):
+                if item == "salir":
+                    return "village"
+                if self.player.buy_item(item):
+                    self.notification = f"¡Compraste {item.name}!"
+                    self.notification_timer = 90  
+                else:
+                    self.notification = "No tienes suficiente oro"
+                    self.notification_timer = 90
+        return None
